@@ -1566,6 +1566,8 @@
 
           currentAddress = address;
           currentPage = 1;
+          allTransactions = [];
+          totalPages = 1;
 
           const balance = await getBalanceRPC(address);
 
@@ -1653,16 +1655,25 @@
         const paginationSection = document.getElementById("paginationSection");
 
         try {
+          const isFirstLoad = currentPage === 1 && allTransactions.length === 0;
+          const fetchCount = isFirstLoad ? 50 : 10;
+
           const result = await fetchAvalancheTxHistory(
             currentAddress,
             currentPage,
-            10
+            fetchCount
           );
           const transactions = result.transactions;
           hasMoreTransactions = result.hasMore;
 
-          // Store all transactions
-          allTransactions = transactions;
+          if (isFirstLoad) {
+            const txCount = transactions.length;
+            totalPages = Math.ceil(txCount / 10);
+
+            allTransactions = transactions;
+          } else {
+            allTransactions = transactions;
+          }
 
           if (!transactions || transactions.length === 0) {
             output.innerHTML = `
@@ -1682,7 +1693,11 @@
           paginationSection.style.display = "block";
 
           // Display transactions with current filter
-          displayTransactions(allTransactions);
+          if (isFirstLoad) {
+            displayTransactions(allTransactions.slice(0, 10));
+          } else {
+            displayTransactions(allTransactions);
+          }
 
           // Update pagination
           updatePagination();
@@ -1712,7 +1727,8 @@
         ).textContent = `Showing ${startIndex}-${endIndex} transactions`;
 
         document.getElementById("prevBtn").disabled = currentPage === 1;
-        document.getElementById("nextBtn").disabled = !hasMoreTransactions;
+        document.getElementById("nextBtn").disabled =
+          currentPage >= totalPages && !hasMoreTransactions;
 
         // Generate page numbers
         generatePageNumbers();
@@ -1723,8 +1739,19 @@
         pageNumbersContainer.innerHTML = "";
 
         const maxPagesToShow = 5;
-        const startPage = Math.max(1, currentPage - 2);
-        const endPage = startPage + maxPagesToShow - 1;
+
+        let startPage, endPage;
+
+        if (currentPage <= 3) {
+          startPage = 1;
+          endPage = Math.min(maxPagesToShow, totalPages);
+        } else if (currentPage >= totalPages - 2) {
+          startPage = Math.max(1, totalPages - maxPagesToShow + 1);
+          endPage = totalPages;
+        } else {
+          startPage = currentPage - 2;
+          endPage = currentPage + 2;
+        }
 
         // Add page numbers
         for (let i = startPage; i <= endPage; i++) {
@@ -1734,15 +1761,10 @@
           }`;
           pageBtn.textContent = i;
           pageBtn.onclick = () => goToPage(i);
-
-          if (i > currentPage && !hasMoreTransactions && i > currentPage) {
-            break;
-          }
-
           pageNumbersContainer.appendChild(pageBtn);
         }
 
-        if (hasMoreTransactions) {
+        if (hasMoreTransactions || endPage < totalPages) {
           const ellipsis = document.createElement("span");
           ellipsis.className = "page-ellipsis";
           ellipsis.textContent = "...";
@@ -1754,22 +1776,53 @@
 
       async function goToPage(page) {
         if (page !== currentPage && page > 0) {
+          const previousPage = currentPage;
           currentPage = page;
-          await loadTransactionPage();
+
+          const startIndex = (page - 1) * 10;
+          const endIndex = startIndex + 10;
+
+          if (allTransactions.length >= endIndex) {
+            displayTransactions(allTransactions.slice(startIndex, endIndex));
+            updatePagination();
+          } else {
+            await loadTransactionPage();
+          }
         }
       }
 
       async function prevPage() {
         if (currentPage > 1) {
           currentPage--;
-          await loadTransactionPage();
+
+          const startIndex = (currentPage - 1) * 10;
+          const endIndex = startIndex + 10;
+
+          if (allTransactions.length >= endIndex) {
+            displayTransactions(allTransactions.slice(startIndex, endIndex));
+            updatePagination();
+          } else {
+            await loadTransactionPage();
+          }
         }
       }
 
       async function nextPage() {
-        if (hasMoreTransactions) {
+        if (hasMoreTransactions || currentPage < totalPages) {
           currentPage++;
-          await loadTransactionPage();
+
+          const startIndex = (currentPage - 1) * 10;
+          const endIndex = startIndex + 10;
+
+          if (allTransactions.length >= endIndex) {
+            displayTransactions(allTransactions.slice(startIndex, endIndex));
+            updatePagination();
+          } else {
+            if (currentPage > totalPages) {
+              totalPages = currentPage;
+            }
+            await loadTransactionPage();
+          }
         }
       }
 
