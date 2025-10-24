@@ -1458,19 +1458,34 @@
               "Invalid transaction hash format. Hash should be 0x followed by 64 hexadecimal characters."
             );
           }
+          const AVAX_RPC_URL = "https://api.avax.network/ext/bc/C/rpc";
+          // Fetch transaction details from AVAX RPC
+          const provider = new ethers.providers.JsonRpcProvider(AVAX_RPC_URL);
+          const tx = await provider.getTransaction(hash);
+          const receipt = await provider.getTransactionReceipt(hash);
+
+          if (!tx) {
+            throw new Error("Transaction not found on the blockchain.");
+          }
 
           // Generate SnowTrace explorer URL
           const explorerUrl = `https://snowtrace.io/tx/${hash}`;
 
-          // Display hash lookup result
+          const value = ethers.utils.formatEther(tx.value || "0");
+          const gasUsed = receipt ? receipt.gasUsed.toString() : "Pending";
+          const status = receipt 
+            ? (receipt.status === 1 ? '<span class="tx-status confirmed">Confirmed</span>' : '<span class="tx-status failed">Failed</span>')
+            : '<span class="tx-status" style="background-color: rgba(255, 193, 7, 0.1); color: #ffc107;">Pending</span>';
+          const blockNumber = tx.blockNumber || "Pending";
+
           output.innerHTML = `
             <div class="wallet-generated-success">
               <div class="success-icon">
-                <i class="fas fa-fingerprint"></i>
+                <i class="fas fa-check-circle"></i>
               </div>
               <div class="success-message">
-                <h3>Transaction Hash Found</h3>
-                <p>View the transaction details on SnowTrace explorer.</p>
+                <h3>Transaction Found</h3>
+                <p>Transaction details retrieved successfully.</p>
               </div>
             </div>
             
@@ -1483,32 +1498,71 @@
               <div class="detail-row">
                 <label><i class="fas fa-fingerprint"></i> Transaction Hash</label>
                 <div class="value-container">
-                  <code>${hash}</code>
+                  <code style="font-size: 0.85rem; word-break: break-all;">${hash}</code>
                   <button class="btn-icon" onclick="copyToClipboard('${hash}')" title="Copy hash">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="detail-row">
+                <label><i class="fas fa-info-circle"></i> Status</label>
+                <div class="value-container">
+                  ${status}
+                </div>
+              </div>
+
+              <div class="detail-row">
+                <label><i class="fas fa-cube"></i> Block Number</label>
+                <div class="value-container">
+                  <code>${blockNumber}</code>
+                </div>
+              </div>
+              
+              <div class="detail-row">
+                <label><i class="fas fa-paper-plane"></i> From</label>
+                <div class="value-container">
+                  <code style="font-size: 0.85rem; word-break: break-all;">${tx.from}</code>
+                  <button class="btn-icon" onclick="copyToClipboard('${tx.from}')" title="Copy address">
                     <i class="fas fa-copy"></i>
                   </button>
                 </div>
               </div>
               
               <div class="detail-row">
-                <label><i class="fas fa-external-link-alt"></i> Explorer</label>
+                <label><i class="fas fa-inbox"></i> To</label>
                 <div class="value-container">
-                  <a href="${explorerUrl}" target="_blank" style="color: var(--primary-color); text-decoration: underline;">
-                    View on SnowTrace Explorer
-                  </a>
+                  <code style="font-size: 0.85rem; word-break: break-all;">${tx.to || "Contract Creation"}</code>
+                  ${tx.to ? `<button class="btn-icon" onclick="copyToClipboard('${tx.to}')" title="Copy address">
+                    <i class="fas fa-copy"></i>
+                  </button>` : ''}
                 </div>
               </div>
               
-              <div style="margin-top: 1rem;">
+              <div class="detail-row">
+                <label><i class="fas fa-coins"></i> Value</label>
+                <div class="value-container">
+                  <span style="font-weight: 600;">${value} AVAX</span>
+                </div>
+              </div>
+
+              <div class="detail-row">
+                <label><i class="fas fa-fire"></i> Gas Used</label>
+                <div class="value-container">
+                  <code>${gasUsed}</code>
+                </div>
+              </div>
+              
+              <div style="margin-top: 1.5rem;">
                 <button class="btn btn-primary btn-block" onclick="window.open('${explorerUrl}', '_blank')">
                   <i class="fas fa-external-link-alt"></i>
-                  Open in SnowTrace
+                  View on SnowTrace Explorer
                 </button>
               </div>
             </div>
           `;
 
-          showNotification("Transaction hash found!", "success");
+          showNotification("Transaction details loaded!", "success");
         } catch (error) {
           output.innerHTML = `
             <div class="error-state">
@@ -1516,12 +1570,12 @@
                 <i class="fas fa-exclamation-triangle"></i>
               </div>
               <div class="error-message">
-                <h3>Invalid Transaction Hash</h3>
+                <h3>Error Loading Transaction</h3>
                 <p>${error.message}</p>
               </div>
             </div>
           `;
-          showNotification("Invalid transaction hash", "error");
+          showNotification("Failed to load transaction", "error");
         } finally {
           button.disabled = false;
           button.innerHTML = originalHTML;
