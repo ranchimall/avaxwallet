@@ -1374,6 +1374,7 @@
           updateURLWithAddress(input);
         } else if (searchType === "hash") {
           await lookupTransactionHash(input);
+          updateURLWithHash(input);
         }
       }
 
@@ -1382,8 +1383,19 @@
         if (!address) return;
 
         const url = new URL(window.location);
+        url.searchParams.delete("hash");
         url.searchParams.set("address", address);
         window.history.pushState({ address: address }, "", url);
+      }
+
+      // Update URL with hash
+      function updateURLWithHash(hash) {
+        if (!hash) return;
+
+        const url = new URL(window.location);
+        url.searchParams.delete("address");
+        url.searchParams.set("hash", hash);
+        window.history.pushState({ hash: hash }, "", url);
       }
 
       // Get address from URL parameters
@@ -1392,10 +1404,44 @@
         return urlParams.get("address");
       }
 
+      // Get hash from URL parameters
+      function getHashFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get("hash");
+      }
+
       // Load address from URL on page load
       async function loadAddressFromURL() {
         const address = getAddressFromURL();
-        if (address) {
+        const hash = getHashFromURL();
+
+        if (hash) {
+          // If hash parameter exists, load transaction hash
+          showPage("transactions");
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const hashRadio = document.querySelector(
+            'input[name="searchType"][value="hash"]'
+          );
+          if (hashRadio) {
+            hashRadio.checked = true;
+
+            document
+              .querySelectorAll(".radio-button-container")
+              .forEach((c) => c.classList.remove("active"));
+            hashRadio
+              .closest(".radio-button-container")
+              .classList.add("active");
+
+            updateSearchInterface("hash");
+          }
+
+          document.getElementById("transactionInput").value = hash;
+
+          await handleSearch();
+        } else if (address) {
+          // If address parameter exists, load address
           showPage("transactions");
 
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1405,6 +1451,14 @@
           );
           if (addressRadio) {
             addressRadio.checked = true;
+
+            document
+              .querySelectorAll(".radio-button-container")
+              .forEach((c) => c.classList.remove("active"));
+            addressRadio
+              .closest(".radio-button-container")
+              .classList.add("active");
+
             updateSearchInterface("address");
           }
 
@@ -1415,7 +1469,33 @@
       }
 
       window.addEventListener("popstate", async function (event) {
-        if (event.state && event.state.address) {
+        if (event.state && event.state.hash) {
+          // Handle transaction hash navigation
+          showPage("transactions");
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const hashRadio = document.querySelector(
+            'input[name="searchType"][value="hash"]'
+          );
+          if (hashRadio) {
+            hashRadio.checked = true;
+
+            document
+              .querySelectorAll(".radio-button-container")
+              .forEach((c) => c.classList.remove("active"));
+            hashRadio
+              .closest(".radio-button-container")
+              .classList.add("active");
+
+            updateSearchInterface("hash");
+          }
+
+          document.getElementById("transactionInput").value = event.state.hash;
+
+          await lookupTransactionHash(event.state.hash);
+        } else if (event.state && event.state.address) {
+          // Handle address navigation
           showPage("transactions");
 
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1425,6 +1505,14 @@
           );
           if (addressRadio) {
             addressRadio.checked = true;
+
+            document
+              .querySelectorAll(".radio-button-container")
+              .forEach((c) => c.classList.remove("active"));
+            addressRadio
+              .closest(".radio-button-container")
+              .classList.add("active");
+
             updateSearchInterface("address");
           }
 
@@ -1473,8 +1561,10 @@
 
           const value = ethers.utils.formatEther(tx.value || "0");
           const gasUsed = receipt ? receipt.gasUsed.toString() : "Pending";
-          const status = receipt 
-            ? (receipt.status === 1 ? '<span class="tx-status confirmed">Confirmed</span>' : '<span class="tx-status failed">Failed</span>')
+          const status = receipt
+            ? receipt.status === 1
+              ? '<span class="tx-status confirmed">Confirmed</span>'
+              : '<span class="tx-status failed">Failed</span>'
             : '<span class="tx-status" style="background-color: rgba(255, 193, 7, 0.1); color: #ffc107;">Pending</span>';
           const blockNumber = tx.blockNumber || "Pending";
 
@@ -1522,8 +1612,12 @@
               <div class="detail-row">
                 <label><i class="fas fa-paper-plane"></i> From</label>
                 <div class="value-container">
-                  <code style="font-size: 0.85rem; word-break: break-all;">${tx.from}</code>
-                  <button class="btn-icon" onclick="copyToClipboard('${tx.from}')" title="Copy address">
+                  <code style="font-size: 0.85rem; word-break: break-all;">${
+                    tx.from
+                  }</code>
+                  <button class="btn-icon" onclick="copyToClipboard('${
+                    tx.from
+                  }')" title="Copy address">
                     <i class="fas fa-copy"></i>
                   </button>
                 </div>
@@ -1532,10 +1626,16 @@
               <div class="detail-row">
                 <label><i class="fas fa-inbox"></i> To</label>
                 <div class="value-container">
-                  <code style="font-size: 0.85rem; word-break: break-all;">${tx.to || "Contract Creation"}</code>
-                  ${tx.to ? `<button class="btn-icon" onclick="copyToClipboard('${tx.to}')" title="Copy address">
+                  <code style="font-size: 0.85rem; word-break: break-all;">${
+                    tx.to || "Contract Creation"
+                  }</code>
+                  ${
+                    tx.to
+                      ? `<button class="btn-icon" onclick="copyToClipboard('${tx.to}')" title="Copy address">
                     <i class="fas fa-copy"></i>
-                  </button>` : ''}
+                  </button>`
+                      : ""
+                  }
                 </div>
               </div>
               
