@@ -1371,10 +1371,69 @@
 
         if (searchType === "address") {
           await loadTransactions();
+          updateURLWithAddress(input);
         } else if (searchType === "hash") {
           await lookupTransactionHash(input);
         }
       }
+
+      // Update URL with address parameter
+      function updateURLWithAddress(address) {
+        if (!address) return;
+
+        const url = new URL(window.location);
+        url.searchParams.set("address", address);
+        window.history.pushState({ address: address }, "", url);
+      }
+
+      // Get address from URL parameters
+      function getAddressFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get("address");
+      }
+
+      // Load address from URL on page load
+      async function loadAddressFromURL() {
+        const address = getAddressFromURL();
+        if (address) {
+          showPage("transactions");
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const addressRadio = document.querySelector(
+            'input[name="searchType"][value="address"]'
+          );
+          if (addressRadio) {
+            addressRadio.checked = true;
+            updateSearchInterface("address");
+          }
+
+          document.getElementById("transactionInput").value = address;
+
+          await handleSearch();
+        }
+      }
+
+      window.addEventListener("popstate", async function (event) {
+        if (event.state && event.state.address) {
+          showPage("transactions");
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const addressRadio = document.querySelector(
+            'input[name="searchType"][value="address"]'
+          );
+          if (addressRadio) {
+            addressRadio.checked = true;
+            updateSearchInterface("address");
+          }
+
+          document.getElementById("transactionInput").value =
+            event.state.address;
+
+          await loadTransactions();
+        }
+      });
 
       // Lookup transaction hash and open in explorer
       async function lookupTransactionHash(hash) {
@@ -1962,7 +2021,9 @@
               }
               <div class="address-content-wrapper">
                 <div class="address-info">
-                  <div class="address-display">
+                  <div class="address-display" onclick="loadAddressFromHistory('${
+                    addr.address
+                  }')" style="cursor: pointer;" title="Click to load this address">
                     <div class="address-text" id="address-display-${index}" title="${
             hasSourceInfo ? addr.sourceInfo.originalAddress : addr.address
           }">
@@ -2016,6 +2077,26 @@
         list.innerHTML = html;
       }
 
+      // Load address from searched history
+      async function loadAddressFromHistory(address) {
+        try {
+          const addressRadio = document.querySelector(
+            'input[name="searchType"][value="address"]'
+          );
+          if (addressRadio) {
+            addressRadio.checked = true;
+            updateSearchInterface("address");
+          }
+
+          document.getElementById("transactionInput").value = address;
+
+          await handleSearch();
+        } catch (error) {
+          console.error("Error loading address from history:", error);
+          showNotification("Failed to load address", "error");
+        }
+      }
+
       async function toggleAddressType(index, type) {
         try {
           const addresses = await searchedAddressDB.getSearchedAddresses();
@@ -2067,25 +2148,26 @@
       // Recheck balance for an address
       async function recheckBalance(address) {
         try {
-          showNotification("Rechecking balance...", "info");
-          const balance = await getBalanceRPC(address);
-
-          if (searchedAddressDB) {
-            const addresses = await searchedAddressDB.getSearchedAddresses();
-            const addr = addresses.find((a) => a.address === address);
-            await searchedAddressDB.saveSearchedAddress(
-              address,
-              parseFloat(balance.avax),
-              Date.now(),
-              addr ? addr.sourceInfo : null
-            );
-            await updateSearchedAddressesList();
+          if (!address) {
+            showNotification("Invalid address", "error");
+            return;
           }
 
-          showNotification("Balance updated successfully", "success");
+          const addressRadio = document.querySelector(
+            'input[name="searchType"][value="address"]'
+          );
+          if (addressRadio) {
+            addressRadio.checked = true;
+            updateSearchInterface("address");
+          }
+
+          const inputElement = document.getElementById("transactionInput");
+          inputElement.value = address;
+
+          await handleSearch();
         } catch (error) {
           console.error("Failed to recheck balance:", error);
-          showNotification("Failed to update balance", "error");
+          showNotification("Failed to load address", "error");
         }
       }
 
@@ -2129,7 +2211,12 @@
         }
       }
 
-      initializeSearchDB();
+      async function initialize() {
+        await initializeSearchDB();
+        await loadAddressFromURL();
+      }
+
+      initialize();
     </script>
   </body>
 </html>
