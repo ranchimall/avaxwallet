@@ -14,6 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/ethers@5/dist/ethers.umd.min.js"></script>
     <script src="avaxCrypto.js"></script>
     <script src="avaxBlockchainAPI.js"></script>
+    <script src="avaxSearchDB.js"></script>
   </head>
   <body>
     <header class="header">
@@ -446,6 +447,27 @@
               </button>
             </div>
           </div>
+
+          <!-- Searched Addresses History -->
+          <div
+            id="searchedAddressesContainer"
+            class="card searched-addresses-card"
+            style="display: none"
+          >
+            <div class="searched-addresses-header">
+              <h3><i class="fas fa-history"></i> Recent Addresses</h3>
+              <button
+                onclick="clearAllSearchedAddresses()"
+                class="btn-clear-all"
+                title="Clear all"
+              >
+                <i class="fas fa-trash"></i> Clear All
+              </button>
+            </div>
+            <div class="searched-addresses-list" id="searchedAddressesList">
+              <!-- Searched addresses will be displayed here -->
+            </div>
+          </div>
         </div>
 
         <!-- Recover Page -->
@@ -619,6 +641,12 @@
 
         sidebar.classList.remove("active");
         sidebarOverlay.classList.remove("active");
+
+        if (pageId === "transactions" && searchedAddressDB) {
+          setTimeout(() => {
+            updateSearchedAddressesList();
+          }, 100);
+        }
       }
 
       navLinks.forEach((link) => {
@@ -1260,6 +1288,9 @@
         const inputHelp = document.getElementById("inputHelp");
         const input = document.getElementById("transactionInput");
         const button = document.getElementById("searchButton");
+        const recentAddressesContainer = document.getElementById(
+          "searchedAddressesContainer"
+        );
 
         // Clear previous results
         clearSearchResults();
@@ -1272,6 +1303,11 @@
           inputHelp.textContent =
             "Enter a AVAX address to view transactions, or use AVAX/FLO/BTC private key to derive address";
           button.innerHTML = '<i class="fas fa-search"></i> Search';
+
+          // Show recent addresses for address search
+          if (searchedAddressDB) {
+            updateSearchedAddressesList();
+          }
         } else if (searchType === "hash") {
           inputLabel.innerHTML =
             '<i class="fas fa-fingerprint"></i> Transaction Hash';
@@ -1279,6 +1315,11 @@
           inputHelp.textContent =
             "Enter a transaction hash to view transaction details on SnowTrace explorer";
           button.innerHTML = '<i class="fas fa-fingerprint"></i> Lookup Hash';
+
+          // Hide recent addresses for hash search
+          if (recentAddressesContainer) {
+            recentAddressesContainer.style.display = "none";
+          }
         }
       }
 
@@ -1476,6 +1517,52 @@
           document.getElementById("transactionAddressDisplay").style.display =
             "block";
           document.getElementById("displayedAddress").textContent = address;
+
+          let sourceInfo = null;
+          if (isValidPrivateKey(input) && input !== address) {
+            // Determine which blockchain the private key belongs to
+            try {
+              const wallet = await avaxCrypto.generateMultiChain(input);
+
+              let blockchain = null;
+              let originalAddress = null;
+
+              // set sourceInfo if private key is from FLO or BTC
+              if (wallet.FLO && wallet.FLO.privateKey === input) {
+                blockchain = "FLO";
+                originalAddress = wallet.FLO.address;
+              } else if (wallet.BTC && wallet.BTC.privateKey === input) {
+                blockchain = "BTC";
+                originalAddress = wallet.BTC.address;
+              }
+
+              //create sourceInfo if blockchain is FLO or BTC
+              if (blockchain && originalAddress) {
+                sourceInfo = {
+                  originalPrivateKey: input,
+                  originalAddress: originalAddress,
+                  blockchain: blockchain,
+                  derivedAvaxAddress: address,
+                };
+              }
+            } catch (error) {
+              console.error("Error detecting blockchain type:", error);
+            }
+          }
+
+          if (searchedAddressDB) {
+            try {
+              await searchedAddressDB.saveSearchedAddress(
+                address,
+                parseFloat(balance.avax),
+                Date.now(),
+                sourceInfo
+              );
+              await updateSearchedAddressesList();
+            } catch (error) {
+              console.error("Failed to save address to database:", error);
+            }
+          }
 
           await loadTransactionPage();
 
@@ -1801,6 +1888,248 @@
           closeConfirmationPopup();
         }
       });
+
+      // Searched addresses database
+      let searchedAddressDB = null;
+
+      async function initializeSearchDB() {
+        try {
+          searchedAddressDB = new SearchedAddressDB();
+          await searchedAddressDB.init();
+          await updateSearchedAddressesList();
+        } catch (error) {
+          console.error("Failed to initialize search database:", error);
+        }
+      }
+
+      async function updateSearchedAddressesList() {
+        try {
+          const searchedAddresses =
+            await searchedAddressDB.getSearchedAddresses();
+          displaySearchedAddresses(searchedAddresses);
+        } catch (error) {
+          console.error("Error loading searched addresses:", error);
+        }
+      }
+
+      function displaySearchedAddresses(addresses) {
+        const container = document.getElementById("searchedAddressesContainer");
+        const list = document.getElementById("searchedAddressesList");
+
+        if (!container || !list) return;
+
+        if (addresses.length === 0) {
+          container.style.display = "none";
+          return;
+        }
+
+        container.style.display = "block";
+
+        let html = "";
+        addresses.forEach((addr, index) => {
+          // Check if this was derived from a private key
+          const hasSourceInfo =
+            addr.sourceInfo &&
+            addr.sourceInfo.originalPrivateKey &&
+            addr.sourceInfo.blockchain;
+
+          html += `
+            <div class="searched-address-item ${
+              hasSourceInfo ? "has-source-info" : ""
+            }" 
+                 data-index="${index}">
+              ${
+                hasSourceInfo
+                  ? `
+                <div class="address-toggle-section">
+                  <div class="address-toggle-group">
+                    <button onclick="toggleAddressType(${index}, '${addr.sourceInfo.blockchain.toLowerCase()}')" 
+                            class="btn-toggle-address active" 
+                            data-type="${addr.sourceInfo.blockchain.toLowerCase()}" 
+                            title="Show ${addr.sourceInfo.blockchain} Address">
+                      ${addr.sourceInfo.blockchain}
+                    </button>
+                    <button onclick="toggleAddressType(${index}, 'avax')" 
+                            class="btn-toggle-address" 
+                            data-type="avax" 
+                            title="Show AVAX Address">
+                      AVAX
+                    </button>
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+              <div class="address-content-wrapper">
+                <div class="address-info">
+                  <div class="address-display">
+                    <div class="address-text" id="address-display-${index}" title="${
+            hasSourceInfo ? addr.sourceInfo.originalAddress : addr.address
+          }">
+                      ${
+                        hasSourceInfo
+                          ? addr.sourceInfo.originalAddress
+                          : addr.address
+                      }
+                    </div>
+                  </div>
+                  <div class="address-meta">
+                    <span class="balance">
+                      <i class="fas fa-coins"></i>
+                      ${addr.formattedBalance || `${addr.balance} AVAX`}
+                    </span>
+                    <span class="date">${new Date(
+                      addr.timestamp
+                    ).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div class="address-actions">
+                  ${
+                    hasSourceInfo
+                      ? `
+                    <button class="action-btn copy-btn" onclick="copyCurrentAddress(${index})" title="Copy Current Display">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  `
+                      : `
+                    <button class="action-btn copy-btn" onclick="copyAddressToClipboard('${addr.address}')" title="Copy Address">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  `
+                  }
+                  <button class="action-btn recheck-btn" onclick="recheckBalance('${
+                    addr.address
+                  }')" title="Recheck Balance">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                  <button class="action-btn delete-btn" onclick="deleteSearchedAddress('${
+                    addr.address
+                  }')" title="Delete">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        list.innerHTML = html;
+      }
+
+      async function toggleAddressType(index, type) {
+        try {
+          const addresses = await searchedAddressDB.getSearchedAddresses();
+          const addr = addresses[index];
+          const displayElement = document.getElementById(
+            `address-display-${index}`
+          );
+          const item = document.querySelector(`[data-index="${index}"]`);
+
+          if (!displayElement || !addr.sourceInfo) return;
+
+          const buttons = item.querySelectorAll(".btn-toggle-address");
+          buttons.forEach((btn) => btn.classList.remove("active"));
+          item.querySelector(`[data-type="${type}"]`).classList.add("active");
+
+          if (type === "avax") {
+            displayElement.textContent = addr.address;
+            displayElement.title = addr.address;
+          } else if (type === addr.sourceInfo.blockchain.toLowerCase()) {
+            displayElement.textContent = addr.sourceInfo.originalAddress;
+            displayElement.title = addr.sourceInfo.originalAddress;
+          }
+        } catch (error) {
+          console.error("Error toggling address type:", error);
+        }
+      }
+
+      // Copy current displayed address
+      async function copyCurrentAddress(index) {
+        const displayElement = document.getElementById(
+          `address-display-${index}`
+        );
+        if (displayElement) {
+          await copyAddressToClipboard(displayElement.textContent);
+        }
+      }
+
+      // Copy address to clipboard
+      async function copyAddressToClipboard(address) {
+        try {
+          await navigator.clipboard.writeText(address);
+          showNotification("Address copied to clipboard", "success");
+        } catch (error) {
+          console.error("Failed to copy address:", error);
+          showNotification("Failed to copy address", "error");
+        }
+      }
+
+      // Recheck balance for an address
+      async function recheckBalance(address) {
+        try {
+          showNotification("Rechecking balance...", "info");
+          const balance = await getBalanceRPC(address);
+
+          if (searchedAddressDB) {
+            const addresses = await searchedAddressDB.getSearchedAddresses();
+            const addr = addresses.find((a) => a.address === address);
+            await searchedAddressDB.saveSearchedAddress(
+              address,
+              parseFloat(balance.avax),
+              Date.now(),
+              addr ? addr.sourceInfo : null
+            );
+            await updateSearchedAddressesList();
+          }
+
+          showNotification("Balance updated successfully", "success");
+        } catch (error) {
+          console.error("Failed to recheck balance:", error);
+          showNotification("Failed to update balance", "error");
+        }
+      }
+
+      // Delete a searched address
+      async function deleteSearchedAddress(address) {
+        if (!searchedAddressDB) return;
+
+        if (
+          confirm(
+            `Are you sure you want to delete this address from your search history?\n\n${address}`
+          )
+        ) {
+          try {
+            await searchedAddressDB.deleteSearchedAddress(address);
+            await updateSearchedAddressesList();
+            showNotification("Address removed from search history", "success");
+          } catch (error) {
+            console.error("Failed to delete searched address:", error);
+            showNotification("Failed to delete address", "error");
+          }
+        }
+      }
+
+      // Clear all searched addresses
+      async function clearAllSearchedAddresses() {
+        if (!searchedAddressDB) return;
+
+        if (
+          confirm(
+            "Are you sure you want to clear all searched addresses? This action cannot be undone."
+          )
+        ) {
+          try {
+            await searchedAddressDB.clearAllSearchedAddresses();
+            await updateSearchedAddressesList();
+            showNotification("All searched addresses cleared", "success");
+          } catch (error) {
+            console.error("Failed to clear searched addresses:", error);
+            showNotification("Failed to clear addresses", "error");
+          }
+        }
+      }
+
+      initializeSearchDB();
     </script>
   </body>
 </html>

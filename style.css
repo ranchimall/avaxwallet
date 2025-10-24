@@ -1428,63 +1428,6 @@ body {
   color: #ef4444;
 }
 
-.tx-info {
-  flex: 1;
-}
-
-.tx-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.25rem;
-  width: 100%;
-}
-
-.tx-direction {
-  font-weight: 600;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.tx-amount {
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.tx-amount.incoming {
-  color: #10b981;
-}
-
-.tx-amount.outgoing {
-  color: #ef4444;
-}
-
-.tx-date {
-  color: var(--text-light);
-  font-size: 0.8rem;
-}
-
-.tx-status {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 3px;
-  margin-top: 0.5rem;
-}
-
-.tx-status.success {
-  background-color: rgba(40, 167, 69, 0.1);
-  color: var(--success-color);
-}
-
-.tx-status.failed {
-  background-color: rgba(220, 53, 69, 0.1);
-  color: var(--danger-color);
-}
-
 /* Notification System */
 .notification-drawer {
   position: fixed;
@@ -2610,5 +2553,268 @@ body {
     word-break: break-all;
     font-size: 0.85rem;
     line-height: 1.4;
+  }
+}
+
+/* Searched Addresses */
+.searched-addresses-card {
+  margin-top: 2rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.searched-addresses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.searched-addresses-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.searched-addresses-header h3 i {
+  color: var(--primary-color);
+}
+
+.btn-clear-all {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger-color);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.btn-clear-all:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.searched-addresses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.searched-address-item {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  position: relative;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.searched-address-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.searched-address-item.has-source-info {
+  padding-bottom: 1rem;
+}
+
+.address-toggle-section {
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.address-toggle-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-toggle-address {
+  background: var(--bg-light);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-address.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.address-content-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.address-info {
+  flex-grow: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.address-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.address-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  font-family: "Courier New", monospace;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.address-meta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.address-meta .balance {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.address-meta .balance i {
+  color: var(--primary-color);
+}
+
+.address-meta .date {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.address-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.action-btn:hover {
+  background-color: var(--bg-light);
+}
+
+.action-btn.copy-btn:hover,
+.action-btn.recheck-btn:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+}
+
+.action-btn.copy-btn i,
+.action-btn.recheck-btn i {
+  color: var(--primary-color);
+}
+
+.action-btn.delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger-color);
+}
+
+.action-btn.delete-btn i {
+  color: var(--danger-color);
+}
+
+/* Mobile responsive styles for searched addresses */
+@media (max-width: 768px) {
+  .searched-addresses-card {
+    margin-top: 1.5rem;
+  }
+
+  .searched-addresses-header {
+    padding: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .searched-addresses-header h3 {
+    font-size: 0.9rem;
+  }
+
+  .btn-clear-all {
+    font-size: 0.75rem;
+  }
+
+  .searched-addresses-list {
+    padding: 0.5rem;
+    max-height: 250px;
+  }
+
+  .address-text {
+    white-space: normal;
+    word-break: break-all;
+    font-size: 0.75rem;
+  }
+
+  .address-content-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .address-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.35rem;
+  }
+
+  .action-btn {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .address-meta {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .btn-toggle-address {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
   }
 }
