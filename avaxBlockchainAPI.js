@@ -149,17 +149,32 @@ async function prepareAvalancheTransaction(
 
     // Check sender balance
     const balance = await getBalanceRPC(senderAddress);
-    if (parseFloat(balance.avax) < parseFloat(amountInAvax)) {
+    const balanceAvax = parseFloat(balance.avax);
+    const amount = parseFloat(amountInAvax);
+
+    // Get current gas price and calculate fee
+    const gasPrice = await getGasPrice();
+    const gasLimit = 21000; // Standard gas limit for a simple AVAX transfer
+
+    const gasPriceBN = ethers.BigNumber.from(gasPrice);
+    const gasLimitBN = ethers.BigNumber.from(gasLimit);
+    const gasFee = parseFloat(
+      ethers.utils.formatEther(gasPriceBN.mul(gasLimitBN))
+    );
+
+    // Check if balance is sufficient for amount + gas fee
+    if (balanceAvax < amount + gasFee) {
       throw new Error(
-        `Insufficient balance. You have ${balance.avax} AVAX but trying to send ${amountInAvax} AVAX`
+        `Insufficient balance for transaction. You have ${
+          balance.avax
+        } AVAX but need ${
+          amount + gasFee
+        } AVAX (amount + gas fee). Please lower the amount to proceed.`
       );
     }
 
     // Get transaction count (nonce)
     const nonce = await getTransactionCount(senderAddress);
-
-    // Get current gas price
-    const gasPrice = await getGasPrice();
 
     // Return prepared transaction data
     return {
@@ -168,7 +183,7 @@ async function prepareAvalancheTransaction(
       amount: amountInAvax,
       nonce: nonce,
       gasPrice: gasPrice,
-      gasLimit: 21000,
+      gasLimit: gasLimit,
       chainId: 43114,
       balance: balance.avax,
       cleanPrivateKey: privateKey,
