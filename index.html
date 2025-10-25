@@ -1024,7 +1024,14 @@
           button.innerHTML = originalHTML;
         }
       }
-
+      // Clear transaction output when user starts typing a new transaction
+      const sendFormFields = ["privateKey", "recipientAddress", "sendAmount"];
+      sendFormFields.forEach(fieldId => {
+        document.getElementById(fieldId).addEventListener("input", () => {
+          document.getElementById("sendOutput").innerHTML = "";
+        });
+      });
+      
       // Send Transaction functionality
       document
         .getElementById("sendForm")
