@@ -266,8 +266,10 @@
                     id="sendAmount"
                     class="form-input"
                     placeholder="Enter the amount to send"
-                    min="0.0001"
-                    step="0.000001"
+                    min="0.000000001"
+                    step="0.0000000001"
+                    oninvalid="this.setCustomValidity('Value must be greater than or equal to 0.000000001')"
+                    oninput="this.setCustomValidity('')"
                     required
                   />
                   <button
