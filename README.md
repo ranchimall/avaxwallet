@@ -1,4 +1,4 @@
-# Avax Wallet - Technical Documentation
+# Avax Web Wallet - Technical Documentation
 
 
 ## Overview
